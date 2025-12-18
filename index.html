@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3Dパフォーマンステスト</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        canvas { display: block; }
+
+        /* 設定パネルのスタイル */
+        #settings-panel {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            width: 250px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            z-index: 100;
+        }
+        #settings-panel h3 { margin-top: 0; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .setting-item { margin-bottom: 15px; }
+        .setting-item label { display: block; font-size: 12px; margin-bottom: 5px; }
+        .setting-item input { width: 100%; }
+        
+        #opensettings {
+            position: absolute;
+            top: 10px;
+            left: 90px;
+            padding: 5px 15px;
+            cursor: pointer;
+            z-index: 101;
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 4px;
+        }
+        #opensettings:hover { background: #666; }
+    </style>
+</head>
+<body>
+
+    <button type="button" id="opensettings">設定</button>
+
+    <div id="settings-panel">
+        <h3>設定</h3>
+        <div class="setting-item">
+            <label>直方体の数: <span id="count-val">500</span></label>
+            <input type="range" id="obj-count" min="1" max="5000" step="10" value="500">
+        </div>
+        <div class="setting-item">
+            <label>回転速度: <span id="speed-val">0.01</span></label>
+            <input type="range" id="rot-speed" min="0" max="0.1" step="0.005" value="0.01">
+        </div>
+        <div class="setting-item">
+            <label>直方体の大きさ: <span id="size-val">1</span></label>
+            <input type="range" id="obj-size" min="1" max="8" step="0.5" value="1">
+        </div>
+        <button id="close-settings" style="width:100%">閉じる</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "stats": "https://unpkg.com/three@0.160.0/examples/jsm/libs/stats.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import Stats from 'stats';
+
+        // --- 基本設定 ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const stats = new Stats();
+        stats.showPanel(0);
+        document.body.appendChild(stats.dom);
+
+        // --- 変数管理 ---
+        let objects = [];
+        let config = {
+            count: 500,
+            speed: 0.01,
+            size: 1
+        };
+
+        const material = new THREE.MeshNormalMaterial();
+
+        // --- オブジェクト生成関数 ---
+        function updateObjects() {
+            // 既存のオブジェクトを削除
+            objects.forEach(obj => {
+                scene.remove(obj);
+                obj.geometry.dispose(); // メモリ解放
+            });
+            objects = [];
+
+
+            const geometry = new THREE.BoxGeometry(config.size, config.size, config.size);
+
+            for (let i = 0; i < config.count; i++) {
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(
+                    (Math.random() - 0.5) * 60,
+                    (Math.random() - 0.5) * 60,
+                    (Math.random() - 0.5) * 60
+                );
+                // 初期回転をランダムに
+                sphere.rotation.set(Math.random() * 2, Math.random() * 2, 0);
+                scene.add(sphere);
+                objects.push(sphere);
+            }
+        }
+
+        camera.position.z = 50;
+        updateObjects();
+
+        // --- UIイベントの制御 ---
+        const panel = document.getElementById('settings-panel');
+        const btnOpen = document.getElementById('opensettings');
+        const btnClose = document.getElementById('close-settings');
+        const inputCount = document.getElementById('obj-count');
+        const inputSpeed = document.getElementById('rot-speed');
+        const inputSize = document.getElementById("obj-size");
+
+        btnOpen.onclick = () => panel.style.display = 'block';
+        btnClose.onclick = () => panel.style.display = 'none';
+
+        inputCount.oninput = (e) => {
+            config.count = parseInt(e.target.value);
+            document.getElementById('count-val').innerText = config.count;
+            updateObjects();
+        };
+        
+        inputSize.oninput = (e) => {
+            config.size = parseFloat(e.target.value);
+            document.getElementById('size-val').innerText = config.size;
+            updateObjects();
+        };  
+
+        inputSpeed.oninput = (e) => {
+            config.speed = parseFloat(e.target.value);
+            document.getElementById('speed-val').innerText = config.speed;
+        };
+
+        // --- アニメーションループ ---
+        function animate() {
+            stats.begin();
+
+            objects.forEach(obj => {
+                obj.rotation.x += config.speed;
+                obj.rotation.y += config.speed;
+            });
+
+            renderer.render(scene, camera);
+            stats.end();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
